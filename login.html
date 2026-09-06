@@ -44,7 +44,6 @@
           Remember for fast login
         </label>
         <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Sign in</button>
-        <p id="apiHint" style="font-size:11px;color:var(--muted);text-align:center;margin:10px 0 0;word-break:break-all"></p>
         <p id="shakeHint" style="font-size:11px;color:var(--muted);text-align:center;margin:12px 0 0;display:none">
           📱 Shake phone to clear saved login
         </p>
@@ -150,7 +149,6 @@
         var d = (st && st.data) || {};
         var name = d.brand_name;
         if (typeof name !== "string") name = (name != null ? String(name) : "Flutter Master");
-        // unwrap JSON quotes
         if (name.charAt(0) === '"') {
           try { name = JSON.parse(name); } catch (e) {}
         }
@@ -186,13 +184,7 @@
         if (c && c.p) document.getElementById("password").value = c.p;
       } catch (e) {}
     }
-    function clearCreds() {
-      try { localStorage.removeItem(CRED_KEY); } catch (e) {}
-      document.getElementById("username").value = "";
-      document.getElementById("password").value = "";
-    }
 
-    // Already logged in?
     if (typeof getToken === "function" && getToken()) {
       (typeof checkAuth === "function" ? checkAuth() : Promise.resolve(null)).then(function (user) {
         if (user) window.location.replace("dashboard.html");
@@ -203,9 +195,6 @@
     loadSavedCreds();
     try { if (typeof bindPasswordToggles === "function") bindPasswordToggles(document); } catch (e) {}
     try { if (typeof bindPasswordStrength === "function") bindPasswordStrength(document); } catch (e) {}
-
-    var hint = document.getElementById("apiHint");
-    if (hint) hint.textContent = "API: " + apiRoot();
 
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -244,9 +233,9 @@
         showErr(data.error || ("Login failed (HTTP " + res.status + ")"));
       } catch (err) {
         if (err && err.name === "AbortError") {
-          showErr("Timeout — server not responding. API: " + apiRoot());
+          showErr("Timeout — server not responding");
         } else {
-          showErr("Network error: " + (err.message || err) + " · " + apiRoot());
+          showErr("Network error");
         }
       } finally {
         btn.disabled = false;
