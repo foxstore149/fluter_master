@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' https: data:;
+  connect-src 'self' https: http://localhost:* http://127.0.0.1:*;
+">
+  <title>Me — Flutter Master</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .me-hero {
+      display: flex; align-items: center; gap: 16px;
+      padding: 20px 16px; margin-bottom: 16px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .me-avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      object-fit: cover; border: 2px solid var(--primary);
+      background: var(--bg);
+    }
+    .me-hero-info { flex: 1; min-width: 0; }
+    .me-hero-name {
+      font-size: 18px; font-weight: 750; letter-spacing: -0.02em;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .me-hero-role {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--muted); margin-top: 2px;
+    }
+    .me-hero-bal {
+      margin-top: 8px; font-size: 13px; color: var(--muted);
+    }
+    .me-hero-bal strong { color: var(--success); font-size: 16px; }
+    .me-section {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+    }
+    .me-section-head {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+    }
+    .me-section-head h2 { font-size: 14px; font-weight: 650; margin: 0; }
+    .me-section-body { padding: 16px; }
+    .me-grid-2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    @media (max-width: 560px) {
+      .me-grid-2 { grid-template-columns: 1fr; }
+    }
+    .me-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .me-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .me-danger { border-color: rgba(239, 68, 68, 0.3); }
+    .tg-status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+    }
+    .tg-status-pill.linked {
+      background: var(--success-soft); color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .tg-status-pill.unlinked {
+      background: var(--warning-soft); color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 6px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+    }
+    .tag.ok { background: var(--success-soft); color: #4ade80; }
+    .tag.warn { background: var(--warning-soft); color: #fbbf24; }
+    .avatar-preview-wrap {
+      display: flex; align-items: center; gap: 12px; margin-top: 8px;
+    }
+    .avatar-preview {
+      width: 48px; height: 48px; border-radius: 50%;
+      object-fit: cover; border: 2px solid var(--border); background: var(--bg);
+    }
+    .brand-preview {
+      width: 48px; height: 48px; border-radius: 12px;
+      object-fit: cover; border: 2px solid var(--border); background: var(--bg);
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="layout"></div>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    requireAuth();
+    document.addEventListener("auth-ready", async function () {
+      try {
+        mountShell("Me");
+        var root = document.getElementById("page-content");
+        var user = window.__user || getUser() || {};
+        var wallet = window.__wallet || { balance: 0, currency: "BDT" };
+        var isRulerUser = typeof isRuler === "function" && isRuler();
+
+        var html =
+          '<div class="page-header">' +
+            '<div><h1>Me</h1><p>Profile, security, Telegram &amp; settings</p></div>' +
+          '</div>' +
+
+          '<div class="me-hero">' +
+            '<img class="me-avatar" id="avatarPreview" src="' + esc(profileAvatarUrl(user)) + '" alt="" onerror="this.src=DEFAULT_AVATAR">' +
+            '<div class="me-hero-info">' +
+              '<div class="me-hero-name">' +
+                esc(user.username || "") +
+                '<span class="tag ' + (user.telegramLinked ? "ok" : "warn") + '" id="tgTag">' +
+                  (user.telegramLinked ? "Linked" : "Not linked") +
+                '</span>' +
+              '</div>' +
+              '<div class="me-hero-role">' + esc(user.role || "") + '</div>' +
+              '<div class="me-hero-bal">Balance: <strong>' + esc(formatMoney(wallet.balance || 0)) + '</strong></div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div style="display:grid;gap:14px">' +
+
+            '<section class="me-section">' +
+              '<div class="me-section-head"><h2>Profile</h2></div>' +
+              '<div class="me-section-body">' +
+                '<form id="avatarForm">' +
+                  '<div class="form-group">' +
+                    '<label>Profile image URL</label>' +
+                    '<input type="url" id="avatarUrl" value="' + esc(user.avatarUrl || "") + '" placeholder="https://...">' +
+                    '<div class="avatar-preview-wrap">' +
+                      '<img class="avatar-preview" id="avatarPreview2" src="' + esc(profileAvatarUrl(user)) + '" alt="" onerror="this.src=DEFAULT_AVATAR">' +
+                      '<span class="me-hint">Paste an image URL to preview</span>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="form-group">' +
+                    '<label>Currency preference</label>' +
+                    '<select id="currencyPref">' +
+                      '<option value="BDT">Taka (৳)</option>' +
+                      '<option value="CREDIT">Credit (100৳ = 1cr)</option>' +
+                    '</select>' +
+                  '</div>' +
+                  '<div class="me-actions">' +
+                    '<button type="submit" class="btn btn-primary" id="avatarBtn">Save profile</button>' +
+                  '</div>' +
+                '</form>' +
+              '</div>' +
+            '</section>' +
+
+            '<section class="me-section">' +
+              '<div class="me-section-head"><h2>Telegram Bot</h2></div>' +
+              '<div class="me-section-body">' +
+                '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+                  '<span class="tg-status-pill unlinked" id="tgStatus">Not linked — connect for OTP &amp; bot control</span>' +
+                '</div>' +
+                '<div id="tgLinkBox" style="display:none;margin-bottom:12px">' +
+                  '<div class="form-group">' +
+                    '<label>Send this command to your Telegram bot</label>' +
+                    '<div style="font-family:var(--mono);font-size:14px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px" id="tgCode">/start CODE</div>' +
+                    '<div class="me-hint" id="tgHint"></div>' +
+                  '</div>' +
+                  '<a href="#" id="tgDeepLink" target="_blank" style="display:none" class="btn btn-primary btn-sm">Open Telegram Bot</a>' +
+                '</div>' +
+                '<div class="me-actions">' +
+                  '<button type="button" class="btn btn-primary" id="tgConnectBtn">Connect Telegram</button>' +
+                  '<button type="button" class="btn btn-danger" id="tgUnlinkBtn">Unlink</button>' +
+                '</div>' +
+              '</div>' +
+            '</section>' +
+
+            (isRulerUser
+              ? '<section class="me-section">' +
+                  '<div class="me-section-head"><h2>Branding</h2></div>' +
+                  '<div class="me-section-body">' +
+                    '<form id="brandForm">' +
+                      '<div class="form-group">' +
+                        '<label>Brand name</label>' +
+                        '<input type="text" id="brandName" value="' + esc((window.__brand && window.__brand.name) || "Flutter Master") + '" placeholder="Flutter Master">' +
+                        '<div class="me-hint" id="brandNamePreview"></div>' +
+                      '</div>' +
+                      '<div class="form-group">' +
+                        '<label>Brand logo URL</label>' +
+                        '<input type="url" id="brandLogoUrl" value="' + esc((window.__brand && window.__brand.logoUrl) || "") + '" placeholder="https://...">' +
+                        '<div class="avatar-preview-wrap">' +
+                          '<img class="brand-preview" id="brandPreview" src="' + esc((window.__brand && window.__brand.logoUrl) || "") + '" alt="" onerror="this.style.display=\'none\'">' +
+                        '</div>' +
+                      '</div>' +
+                      '<div class="me-actions">' +
+                        '<button type="submit" class="btn btn-primary" id="brandBtn">Save branding</button>' +
+                      '</div>' +
+                    '</form>' +
+                  '</div>' +
+                '</section>'
+              : "")
+
+            +
+
+            '<section class="me-section">' +
+              '<div class="me-section-head"><h2>Security</h2></div>' +
+              '<div class="me-section-body">' +
+                '<form id="pwForm">' +
+                  '<div class="form-group"><label>Current password</label>' +
+                    '<input type="password" id="current" required minlength="4" autocomplete="current-password"></div>' +
+                  '<div class="me-grid-2">' +
+                    '<div class="form-group"><label>New password</label>' +
+                      '<input type="password" id="next" required minlength="4" autocomplete="new-password">' +
+                      '<div class="me-hint">Min 4 characters</div></div>' +
+                    '<div class="form-group"><label>Confirm</label>' +
+                      '<input type="password" id="confirm" required minlength="4" autocomplete="new-password"></div>' +
+                  '</div>' +
+                  '<div class="me-actions">' +
+                    '<button type="submit" class="btn btn-primary" id="submitBtn">Change password</button>' +
+                  '</div>' +
+                '</form>' +
+              '</div>' +
+            '</section>' +
+
+            '<section class="me-section me-danger">' +
+              '<div class="me-section-body" style="padding:14px">' +
+                '<button type="button" class="btn btn-danger btn-block" id="logoutBtn">Logout</button>' +
+              '</div>' +
+            '</section>' +
+
+          '</div>';
+
+        root.innerHTML = html;
+        if (typeof bindPasswordToggles === "function") bindPasswordToggles(root);
+        if (typeof bindPasswordStrength === "function") bindPasswordStrength(root);
+
+        var cur = (wallet.currency || "BDT");
+        var curEl = document.getElementById("currencyPref");
+        if (curEl) curEl.value = String(cur).toUpperCase() === "CREDIT" ? "CREDIT" : "BDT";
+
+        api("/auth/me").then(function (me) {
+          if (me.telegram) window.__telegram = me.telegram;
+          if (me.user) {
+            window.__user = Object.assign({}, window.__user || {}, me.user);
+            var linked = !!me.user.telegramLinked;
+            var name = me.user.telegramUsername || "";
+            var st = document.getElementById("tgStatus");
+            var tag = document.getElementById("tgTag");
+            if (st) {
+              st.className = "tg-status-pill " + (linked ? "linked" : "unlinked");
+              st.textContent = linked ? ("Linked" + (name ? (" · @" + name) : "")) : "Not linked — connect for OTP & bot control";
+            }
+            if (tag) {
+              tag.className = "tag " + (linked ? "ok" : "warn");
+              tag.textContent = linked ? "Linked" : "Not linked";
+            }
+          }
+          if (me.wallet) {
+            window.__wallet = me.wallet;
+            var balEl = document.querySelector(".me-hero-bal strong");
+            if (balEl && typeof formatMoney === "function") balEl.textContent = formatMoney(me.wallet.balance || 0);
+          }
+        }).catch(function () {});
+
+        document.getElementById("avatarUrl").addEventListener("input", function () {
+          var v = this.value.trim() || DEFAULT_AVATAR;
+          document.getElementById("avatarPreview").src = v;
+          document.getElementById("avatarPreview2").src = v;
+        });
+
+        document.getElementById("avatarForm").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          var btn = document.getElementById("avatarBtn");
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner"></span> Saving…';
+          try {
+            var curPref = document.getElementById("currencyPref").value;
+            var res = await api("/auth/profile", {
+              method: "PATCH",
+              body: {
+                avatarUrl: document.getElementById("avatarUrl").value.trim(),
+                currency: curPref
+              }
+            });
+            if (res.user) window.__user = Object.assign({}, window.__user || {}, res.user);
+            if (res.wallet) window.__wallet = res.wallet;
+            else {
+              window.__wallet = window.__wallet || {};
+              window.__wallet.currency = curPref;
+            }
+            showToast("Profile saved");
+            location.reload();
+          } catch (err) {
+            showToast(err.message || "Save failed", "error");
+            btn.disabled = false;
+            btn.textContent = "Save profile";
+          }
+        });
+
+        var connectBtn = document.getElementById("tgConnectBtn");
+        if (connectBtn) {
+          connectBtn.onclick = async function () {
+            connectBtn.disabled = true;
+            try {
+              var res = await api("/auth/telegram/link-code", { method: "POST", body: {} });
+              var box = document.getElementById("tgLinkBox");
+              var codeEl = document.getElementById("tgCode");
+              var hint = document.getElementById("tgHint");
+              var deep = document.getElementById("tgDeepLink");
+              if (box) box.style.display = "";
+              if (codeEl) codeEl.textContent = "/start " + res.code;
+              if (hint) hint.textContent = res.instructions || "";
+              if (deep && res.deepLink) {
+                deep.href = res.deepLink;
+                deep.style.display = "inline-flex";
+              }
+              showToast("Link code ready");
+            } catch (err) {
+              showToast(err.message || "Failed", "error");
+            }
+            connectBtn.disabled = false;
+          };
+        }
+        var unlinkBtn = document.getElementById("tgUnlinkBtn");
+        if (unlinkBtn) {
+          unlinkBtn.onclick = async function () {
+            if (!confirm("Unlink Telegram from this account?")) return;
+            try {
+              await api("/auth/telegram/unlink", { method: "POST", body: {} });
+              showToast("Telegram unlinked");
+              location.reload();
+            } catch (err) {
+              showToast(err.message || "Failed", "error");
+            }
+          };
+        }
+
+        if (isRulerUser) {
+          var logoInput = document.getElementById("brandLogoUrl");
+          if (logoInput) {
+            logoInput.addEventListener("input", function () {
+              var prev = document.getElementById("brandPreview");
+              var v = this.value.trim();
+              if (prev && prev.tagName === "IMG") {
+                if (v) { prev.src = v; prev.style.display = ""; }
+                else prev.style.display = "none";
+              }
+            });
+          }
+          var nameInput = document.getElementById("brandName");
+          if (nameInput) {
+            nameInput.addEventListener("input", function () {
+              var el = document.getElementById("brandNamePreview");
+              if (el) el.textContent = "Preview: " + (this.value || "Flutter Master");
+            });
+          }
+          document.getElementById("brandForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+            var btn = document.getElementById("brandBtn");
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Saving…';
+            try {
+              var name = document.getElementById("brandName").value.trim() || "Flutter Master";
+              var logo = document.getElementById("brandLogoUrl").value.trim();
+              await api("/settings/branding", {
+                method: "PUT",
+                body: { name: name, logoUrl: logo, logo_url: logo }
+              });
+              window.__brand = { name: name, logoUrl: logo };
+              showToast("Branding saved");
+              location.reload();
+            } catch (err) {
+              showToast(err.message || "Save failed", "error");
+              btn.disabled = false;
+              btn.textContent = "Save branding";
+            }
+          });
+        }
+
+        document.getElementById("pwForm").addEventListener("submit", async function (e) {
+          e.preventDefault();
+          var btn = document.getElementById("submitBtn");
+          var next = document.getElementById("next").value;
+          var confirm = document.getElementById("confirm").value;
+          if (next !== confirm) { showToast("Passwords don't match", "error"); return; }
+          if (next.length < 4) { showToast("Password too short", "error"); return; }
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner"></span> Changing…';
+          try {
+            await api("/auth/change-password", {
+              method: "POST",
+              body: {
+                currentPassword: document.getElementById("current").value,
+                newPassword: next
+              }
+            });
+            showToast("Password changed — sign in again");
+            setTimeout(function () { window.location.href = "login.html"; }, 1200);
+          } catch (err) {
+            showToast(err.message || "Failed", "error");
+            btn.disabled = false;
+            btn.textContent = "Change password";
+          }
+        });
+
+        document.getElementById("logoutBtn").onclick = function () { logout(); };
+      } catch (err) {
+        console.error("settings render", err);
+        var root2 = document.getElementById("page-content") || document.getElementById("app");
+        if (root2) {
+          root2.innerHTML = '<div class="card"><div class="card-body" style="color:var(--danger)">Settings failed: ' +
+            esc(err && err.message ? err.message : String(err)) + '</div></div>';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
